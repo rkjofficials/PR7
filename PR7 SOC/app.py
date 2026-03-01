@@ -90,7 +90,7 @@ def device_info():
     try:
         cpu_percent = psutil.cpu_percent(interval=0.1)
         mem = psutil.virtual_memory()
-        disk = psutil.disk_usage('/')
+        disk = psutil.disk_usage(os.path.expanduser('~'))
         load_avg = os.getloadavg() if hasattr(os, 'getloadavg') else [0, 0, 0]
         
         info = {
@@ -142,7 +142,7 @@ def get_system_alerts():
             })
         
         # Check Disk usage
-        disk = psutil.disk_usage('/')
+        disk = psutil.disk_usage(os.path.expanduser('~'))
         if disk.percent > 90:
             alerts.append({
                 'level': 'critical',
