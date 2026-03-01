@@ -40,36 +40,45 @@ def index():
 
 @app.route('/processes')
 def processes():
+    """Get list of running processes (Termux/Android 9 compatible)"""
     procs = []
-    for proc in psutil.process_iter(['pid', 'name', 'username', 'status']):
+    for proc in psutil.process_iter(['pid', 'name', 'status']):
         try:
             procs.append(proc.info)
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
+        except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
             continue
     return jsonify(procs)
 
 @app.route('/network')
 def network():
+    """Get network connections (Android 9 compatible)"""
     conns = []
-    for c in psutil.net_connections(kind='inet'):
-        conns.append({
-            'fd': c.fd,
-            'family': str(c.family),
-            'type': str(c.type),
-            'laddr': '%s:%s' % (c.laddr) if c.laddr else '',
-            'raddr': '%s:%s' % (c.raddr) if c.raddr else '',
-            'status': c.status,
-            'pid': c.pid
-        })
+    try:
+        for c in psutil.net_connections(kind='inet'):
+            try:
+                conns.append({
+                    'family': str(c.family),
+                    'type': str(c.type),
+                    'laddr': '%s:%s' % (c.laddr) if c.laddr else 'N/A',
+                    'raddr': '%s:%s' % (c.raddr) if c.raddr else 'N/A',
+                    'status': c.status,
+                    'pid': c.pid if c.pid else 'N/A'
+                })
+            except (OSError, AttributeError):
+                continue
+    except PermissionError:
+        return jsonify({'error': 'Limited network access on this device', 'connections': conns})
     return jsonify(conns)
 
 @app.route('/battery')
 def battery():
-    """Get battery info from Termux API"""
+    """Get battery info from Termux API (Android 9 compatible)"""
     data = run_cmd_safe('termux-battery-stats')
     try:
         return jsonify(json.loads(data))
     except:
+        if 'not found' in data.lower() or 'command not found' in data.lower():
+            return jsonify({'status': 'N/A', 'message': 'Termux API not available. Install: pkg install termux-api'})
         return jsonify({'raw': data})
 
 @app.route('/sensor')
@@ -86,11 +95,21 @@ def sensor():
 
 @app.route('/device-info')
 def device_info():
-    """Get device information"""
+    """Get device information (Android 9 compatible)"""
     try:
         cpu_percent = psutil.cpu_percent(interval=0.1)
         mem = psutil.virtual_memory()
-        disk = psutil.disk_usage(os.path.expanduser('~'))
+        # Use a safe path for disk usage - Termux doesn't allow access to /
+        home_dir = os.path.expanduser('~')
+        disk = None
+        try:
+            disk = psutil.disk_usage(home_dir)
+        except (PermissionError, OSError):
+            try:
+                disk = psutil.disk_usage('/')
+            except (PermissionError, OSError):
+                # If both fail, return None
+                pass
         load_avg = os.getloadavg() if hasattr(os, 'getloadavg') else [0, 0, 0]
         
         info = {
@@ -99,8 +118,9 @@ def device_info():
             'cpu_count': psutil.cpu_count(),
             'cpu_percent': cpu_percent,
             'memory': mem._asdict(),
-            'disk': disk._asdict(),
-            'load_avg': load_avg
+            'disk': disk._asdict() if disk else {'total': 'N/A', 'used': 'N/A', 'free': 'N/A', 'percent': 'N/A'},
+            'load_avg': load_avg,
+            'platform': 'Android 9 (Termux non-rooted)'
         }
         return jsonify(info)
     except Exception as e:
@@ -141,20 +161,25 @@ def get_system_alerts():
                 'message': f'RAM usage at {mem.percent:.1f}%'
             })
         
-        # Check Disk usage
-        disk = psutil.disk_usage(os.path.expanduser('~'))
-        if disk.percent > 90:
-            alerts.append({
-                'level': 'critical',
-                'title': 'CRITICAL DISK USAGE',
-                'message': f'Disk usage at {disk.percent:.1f}%'
-            })
-        elif disk.percent > 80:
-            alerts.append({
-                'level': 'warning',
-                'title': 'HIGH DISK USAGE',
-                'message': f'Disk usage at {disk.percent:.1f}%'
-            })
+        # Check Disk usage (with Termux-safe fallback)
+        try:
+            disk = psutil.disk_usage(os.path.expanduser('~'))
+        except PermissionError:
+            disk = None
+        
+        if disk:
+            if disk.percent > 90:
+                alerts.append({
+                    'level': 'critical',
+                    'title': 'CRITICAL DISK USAGE',
+                    'message': f'Disk usage at {disk.percent:.1f}%'
+                })
+            elif disk.percent > 80:
+                alerts.append({
+                    'level': 'warning',
+                    'title': 'HIGH DISK USAGE',
+                    'message': f'Disk usage at {disk.percent:.1f}%'
+                })
         
         # Check for suspicious process count
         proc_count = len(psutil.pids())
@@ -190,28 +215,34 @@ def get_system_alerts():
 
 @app.route('/open-ports')
 def get_open_ports():
-    """Get list of listening ports"""
+    """Get list of listening ports (Android 9 compatible)"""
     try:
         connections = psutil.net_connections()
         ports = []
         for conn in connections:
             if conn.status == 'LISTEN' and conn.laddr:
                 try:
-                    proc = psutil.Process(conn.pid)
+                    proc_name = 'N/A'
+                    try:
+                        proc = psutil.Process(conn.pid)
+                        proc_name = proc.name()
+                    except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
+                        pass
+                    
                     ports.append({
                         'port': conn.laddr.port,
                         'address': conn.laddr.ip,
                         'protocol': 'TCP' if conn.type == 1 else 'UDP',
-                        'pid': conn.pid,
-                        'process': proc.name()
+                        'pid': conn.pid if conn.pid else 'N/A',
+                        'process': proc_name
                     })
-                except:
+                except (OSError, AttributeError):
                     pass
         return jsonify({'ports': ports})
+    except PermissionError:
+        return jsonify({'error': 'Limited permissions on Android non-rooted device', 'ports': []})
     except Exception as e:
         return jsonify({'error': str(e)})
-
-import shutil
 
 @app.route('/packets')
 def get_packets():
@@ -306,14 +337,25 @@ def file_read():
     filepath = data.get('path')
     if not filepath:
         return jsonify({'error': 'no path'}), 400
+    
+    # Security: prevent reading system files
+    home_dir = os.path.expanduser('~')
+    if not filepath.startswith(home_dir) and not filepath.startswith('/sdcard') and not filepath.startswith('/storage'):
+        return jsonify({'error': 'Access denied: can only read from home or storage directories'}), 403
+    
     try:
+        if not os.path.exists(filepath):
+            return jsonify({'error': f'File not found: {filepath}'}), 404
         with open(filepath, 'r') as f:
             content = f.read()
         log_activity('FILE_READ', f'Read file: {filepath}', 'success')
         return jsonify({'content': content})
+    except PermissionError:
+        log_activity('FILE_READ', f'Permission denied: {filepath}', 'error')
+        return jsonify({'error': f'Permission denied reading: {filepath}'}), 403
     except Exception as e:
         log_activity('FILE_READ', f'Failed to read: {filepath}', 'error')
-        return jsonify({'error': str(e)})
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/file-write', methods=['POST'])
 def file_write():
@@ -323,14 +365,23 @@ def file_write():
     content = data.get('content')
     if not filepath or content is None:
         return jsonify({'error': 'missing path or content'}), 400
+    
+    # Security: prevent writing to system directories
+    home_dir = os.path.expanduser('~')
+    if not filepath.startswith(home_dir) and not filepath.startswith('/sdcard') and not filepath.startswith('/storage'):
+        return jsonify({'error': 'Access denied: can only write to home or storage directories'}), 403
+    
     try:
         with open(filepath, 'w') as f:
             f.write(content)
         log_activity('FILE_WRITE', f'Wrote to file: {filepath}', 'success')
         return jsonify({'status': 'success'})
+    except PermissionError:
+        log_activity('FILE_WRITE', f'Permission denied: {filepath}', 'error')
+        return jsonify({'error': f'Permission denied writing: {filepath}'}), 403
     except Exception as e:
         log_activity('FILE_WRITE', f'Failed to write: {filepath}', 'error')
-        return jsonify({'error': str(e)})
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/file-delete', methods=['POST'])
 def file_delete():
@@ -339,28 +390,56 @@ def file_delete():
     filepath = data.get('path')
     if not filepath:
         return jsonify({'error': 'no path'}), 400
+    
+    # Security: prevent deleting system files
+    home_dir = os.path.expanduser('~')
+    if not filepath.startswith(home_dir) and not filepath.startswith('/sdcard') and not filepath.startswith('/storage'):
+        return jsonify({'error': 'Access denied: can only delete files in home or storage directories'}), 403
+    
     try:
+        if not os.path.exists(filepath):
+            return jsonify({'error': f'File not found: {filepath}'}), 404
         os.remove(filepath)
         log_activity('FILE_DELETE', f'Deleted file: {filepath}', 'success')
         return jsonify({'status': 'success'})
+    except PermissionError:
+        log_activity('FILE_DELETE', f'Permission denied: {filepath}', 'error')
+        return jsonify({'error': f'Permission denied deleting: {filepath}'}), 403
     except Exception as e:
         log_activity('FILE_DELETE', f'Failed to delete: {filepath}', 'error')
-        return jsonify({'error': str(e)})
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/dir-list', methods=['POST'])
 def dir_list():
     """List directory contents"""
     data = request.json
     dirpath = data.get('path', os.path.expanduser('~'))
+    
+    # Security: prevent access to system directories in Termux
+    home_dir = os.path.expanduser('~')
+    if not dirpath.startswith(home_dir) and not dirpath.startswith('/sdcard') and not dirpath.startswith('/storage'):
+        dirpath = home_dir
+    
     try:
+        if not os.path.exists(dirpath):
+            return jsonify({'error': f'Path does not exist: {dirpath}'}), 404
+        if not os.path.isdir(dirpath):
+            return jsonify({'error': f'Path is not a directory: {dirpath}'}), 400
+        
         items = []
         for item in os.listdir(dirpath):
             fullpath = os.path.join(dirpath, item)
-            is_dir = os.path.isdir(fullpath)
-            items.append({'name': item, 'path': fullpath, 'is_dir': is_dir})
+            try:
+                is_dir = os.path.isdir(fullpath)
+                items.append({'name': item, 'path': fullpath, 'is_dir': is_dir})
+            except (PermissionError, OSError):
+                # Skip items we can't access
+                pass
         return jsonify({'items': items})
+    except PermissionError as e:
+        return jsonify({'error': f'Permission denied accessing {dirpath}'}), 403
     except Exception as e:
-        return jsonify({'error': str(e)})
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/packages/installed')
 def get_installed_packages():

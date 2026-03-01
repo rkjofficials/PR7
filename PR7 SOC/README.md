@@ -114,22 +114,68 @@ A professional cybersecurity monitoring and control system for Android Termux th
    cd termux_monitor
    ```
 
-2. **Install Dependencies**:
+2. **Grant Storage Permissions** (Required for Termux):
+   ```bash
+   # This grants access to external storage and system files
+   termux-setup-storage
+   # Accept the permission prompt on your device
+   ```
+
+3. **Install Dependencies**:
    ```bash
    pkg update
    pkg install python
    pip install -r requirements.txt
    ```
 
-3. **Run the Dashboard**:
+4. **Run the Dashboard**:
    ```bash
    python app.py
    ```
 
-4. **Access the Dashboard**:
+5. **Access the Dashboard**:
    - Open browser (Firefox, Chrome, etc.)
-   - Navigate to: `http://localhost:8080`
-   - Or from another device: `http://<YOUR_DEVICE_IP>:8080`
+   - Navigate to: `http://localhost:8088`
+   - Or from another device: `http://<YOUR_DEVICE_IP>:8088`
+
+### 🔒 Permission Notes for Termux (Android 9 Non-Rooted)
+
+**Important**: Android 9 non-rooted devices have sandbox restrictions. If you get errors:
+
+1. **"Error 13: Permission Denied /" error**:
+   - This is **normal and expected** on non-rooted Android
+   - The app has restricted file system access for security
+   
+2. **What works** ✅:
+   - Process monitoring (CPU, RAM, count)
+   - Network monitoring (connections, ports)
+   - File operations in home directory or `/sdcard/`
+   - Basic device info (except full disk access)
+   - System alerts and warnings
+
+3. **What requires permissions** ❌:
+   - Full disk access (can still read home directory)
+   - System file reading
+   - Root-level process control
+   - Direct hardware access (battery, sensors need Termux API)
+
+4. **Solutions**:
+   - **Grant storage permissions**: `termux-setup-storage`
+   - **Install Termux API** (for battery/sensor data):
+     ```bash
+     pkg install termux-api
+     # Also install on device: download from F-Droid or Play Store
+     ```
+   - **Use only accessible paths**:
+     - ✅ `~/` (home directory)
+     - ✅ `/sdcard/` (external storage)
+     - ✅ `/storage/` (media storage)
+     - ❌ `/` (root - blocked by sandbox)
+     - ❌ `/system/` (system files - blocked)
+
+5. **Rooted Android Alternative**:
+   - If you root your device later, the app will gain full access
+   - Run with: `sudo python app.py` (after installing sudo)
 
 ---
 
