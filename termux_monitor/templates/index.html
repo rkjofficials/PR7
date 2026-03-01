@@ -1,0 +1,1246 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>PR7 SOC Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --bg-1: #07101b;
+      --bg-2: #0f2438;
+      --accent: #00ff99;
+      --accent-2: #00ffcc;
+      --muted: #9bdacb;
+      --critical: #ff6b6b;
+      --success: #44ff44;
+      --surface: rgba(255,255,255,0.02);
+    }
+
+    .logo-text {
+      margin: 0;
+      color: var(--accent);
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      text-align: center;
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      text-shadow: 0 6px 30px rgba(0,255,153,0.07);
+    }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 100%);
+      color: var(--accent);
+      min-height: 100vh;
+    }
+    .header { 
+      background: linear-gradient(90deg, #0f1b2e 0%, #1a2f4a 100%); 
+      padding: 20px; 
+      border-bottom: 3px solid #00ff99; 
+      box-shadow: 0 0 30px rgba(0, 255, 153, 0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    h1 { 
+      text-align: center; 
+      color: #00ff99; 
+      text-shadow: 0 0 20px #00ff99, 0 0 40px rgba(0, 255, 153, 0.5);
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: 2px;
+    }
+    .nav-bar { 
+      display: flex; 
+      background: linear-gradient(90deg, #1a1f3a 0%, #0f1b2e 100%); 
+      border-bottom: 2px solid #00ff99; 
+      overflow-x: auto; 
+      box-shadow: 0 2px 15px rgba(0, 0, 0, 0.5);
+      position: sticky;
+      top: 80px;
+      z-index: 99;
+    }
+    .nav-btn {
+      flex: none;
+      padding: 12px 18px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 600;
+      border-bottom: 3px solid transparent;
+      font-size: 13px;
+      white-space: nowrap;
+      transition: all 0.18s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .nav-btn:hover {
+      background: rgba(0,255,153,0.04);
+      color: var(--accent-2);
+      box-shadow: inset 0 -2px 8px rgba(0, 255, 153, 0.05);
+    }
+    .nav-btn.active {
+      border-bottom: 3px solid var(--accent);
+      background: linear-gradient(90deg, rgba(0,255,153,0.06), rgba(0,255,204,0.03));
+      color: var(--accent-2);
+      box-shadow: inset 0 -3px 10px rgba(0, 255, 153, 0.08);
+    }
+    .container { 
+      max-width: 1800px; 
+      margin: 0 auto; 
+      padding: 25px; 
+    }
+    .page-section { display: none; }
+    .page-section.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    h2 { 
+      color: #00ff99; 
+      border-bottom: 2px solid #00ff99; 
+      padding-bottom: 10px; 
+      margin-top: 0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 18px;
+    }
+    section { 
+      margin-bottom: 30px; 
+      background: linear-gradient(135deg, #1a1f3a 0%, #0f1b2e 100%); 
+      padding: 20px; 
+      border: 2px solid #00ff99; 
+      border-radius: 8px;
+      box-shadow: 0 0 20px rgba(0, 255, 153, 0.2), inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+    table { 
+      border-collapse: collapse; 
+      width: 100%; 
+      background: #0a0e27;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+    th, td { 
+      border: 1px solid #00aa99; 
+      padding: 12px; 
+      text-align: left; 
+      font-size: 13px;
+    }
+    th { 
+      background: linear-gradient(90deg, #0f1b2e 0%, #1a2f4a 100%); 
+      color: #00ffcc; 
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid #00ff99;
+    }
+    td { 
+      background: #0a0e27;
+      color: #00ff00;
+    }
+    tr:hover { 
+      background: linear-gradient(90deg, #1a2540 0%, #0f1b3c 100%);
+      box-shadow: inset 0 0 10px rgba(0, 255, 153, 0.1);
+    }
+    textarea { 
+      width: 100%; 
+      background: #0a0e27; 
+      border: 2px solid #00ff99; 
+      color: #00ff00; 
+      padding: 12px; 
+      margin-bottom: 10px; 
+      font-family: 'Courier New';
+      border-radius: 5px;
+      box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3);
+    }
+    textarea:focus { 
+      outline: none;
+      border-color: #00ffcc;
+      box-shadow: 0 0 15px rgba(0, 255, 153, 0.4), inset 0 2px 5px rgba(0, 0, 0, 0.3);
+    }
+    input[type="text"] { 
+      background: #0a0e27; 
+      border: 2px solid #00ff99; 
+      color: #00ff00; 
+      padding: 10px 12px; 
+      font-family: 'Courier New';
+      border-radius: 5px;
+      font-size: 13px;
+      transition: all 0.3s;
+    }
+    input[type="text"]:focus { 
+      outline: none;
+      border-color: #00ffcc;
+      box-shadow: 0 0 15px rgba(0, 255, 153, 0.4);
+    }
+    button {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+      color: #07121a;
+      border: none;
+      padding: 10px 16px;
+      cursor: pointer;
+      font-weight: 700;
+      border-radius: 6px;
+      margin-right: 8px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      transition: transform .12s ease, box-shadow .12s ease;
+      box-shadow: 0 6px 18px rgba(0,255,153,0.08);
+    }
+    button:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(0,255,153,0.12); }
+    button:active { transform: translateY(0); }
+    #output { 
+      white-space: pre-wrap; 
+      background: #0a0e27; 
+      padding: 15px; 
+      border:2px solid #00ff99; 
+      max-height: 350px; 
+      overflow-y: auto; 
+      margin-top: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    #activity-table { 
+      max-height: 450px; 
+      display: block; 
+      overflow-y: auto; 
+    }
+    #activity-table tbody { 
+      display: block; 
+      overflow-y: auto; 
+      max-height: 400px; 
+    }
+    #activity-table thead { 
+      display: block; 
+    }
+    #activity-table tr { 
+      display: table; 
+      width: 100%; 
+    }
+    .grid { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+      gap: 20px; 
+    }
+    .grid-3 { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+      gap: 15px; 
+    }
+    .stat-box { 
+      background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%); 
+      border: 2px solid #00ff99; 
+      padding: 18px; 
+      border-radius: 8px;
+      box-shadow: 0 0 15px rgba(0, 255, 153, 0.15), inset 0 1px 0 rgba(255,255,255,0.05);
+      transition: all 0.3s ease;
+    }
+    .stat-box:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(0, 255, 153, 0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+    .stat-label { 
+      color: #00ffcc; 
+      font-weight: bold;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .stat-value { 
+      color: #00ff99; 
+      font-size: 18px;
+      font-weight: bold;
+      text-shadow: 0 0 10px rgba(0, 255, 153, 0.5);
+      word-break: break-all;
+    }
+    .chart-container { 
+      position: relative; 
+      height: 320px; 
+      margin: 20px 0;
+      background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+      border: 2px solid #00ff99;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 0 15px rgba(0, 255, 153, 0.15);
+    }
+    .alert-box {
+      background: linear-gradient(135deg, rgba(255, 68, 68, 0.1) 0%, rgba(255, 170, 68, 0.05) 100%);
+      border-left: 4px solid #ff4444;
+      border-right: 2px solid #ff6b6b;
+      border-top: 2px solid #ff6b6b;
+      border-bottom: 2px solid #ff6b6b;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      color: #ffaa88;
+      font-weight: bold;
+    }
+    .success-box {
+      background: linear-gradient(135deg, rgba(68, 255, 68, 0.1) 0%, rgba(100, 255, 100, 0.05) 100%);
+      border-left: 4px solid #44ff44;
+      border-right: 2px solid #66ff66;
+      border-top: 2px solid #66ff66;
+      border-bottom: 2px solid #66ff66;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      color: #88ff88;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <!-- plain-text PR7 logo -->
+      <div class="logo-text">PR7</div>
+    </div>
+
+  <div class="nav-bar">
+    <button class="nav-btn active" onclick="switchPage(this, 'dashboard')">📊 Dashboard</button>
+    <button class="nav-btn" onclick="switchPage(this, 'processes')">⚙️ Processes</button>
+    <button class="nav-btn" onclick="switchPage(this, 'network')">🌐 Network</button>
+    <button class="nav-btn" onclick="switchPage(this, 'packets')">📡 Packets</button>
+    <button class="nav-btn" onclick="switchPage(this, 'files')">📂 File Manager</button>
+    <button class="nav-btn" onclick="switchPage(this, 'editor')">📝 File Editor</button>
+    <button class="nav-btn" onclick="switchPage(this, 'commands')">💻 Commands</button>
+    <button class="nav-btn" onclick="switchPage(this, 'packages')">📦 Packages</button>
+    <button class="nav-btn" onclick="switchPage(this, 'activity')">📋 Activity</button>
+  </div>
+
+  <div class="container">
+    <!-- DASHBOARD PAGE -->
+    <div id="dashboard" class="page-section active">
+      <section id="device-section">
+        <h2>🛡️ System Status & Security Overview</h2>
+        <div class="grid">
+          <div class="stat-box">
+            <div class="stat-label">Hostname</div>
+            <div class="stat-value" id="hostname">—</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">System Uptime</div>
+            <div class="stat-value" id="uptime" style="font-size: 14px;">—</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Active Processes</div>
+            <div class="stat-value" id="proc-count">—</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Network Connections</div>
+            <div class="stat-value" id="net-count">—</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">CPU Cores</div>
+            <div class="stat-value" id="cpu_count">—</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">System Load (1min)</div>
+            <div class="stat-value" id="sys-load" style="font-size: 14px;">—</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="resource-section">
+        <h2>⚡ Resource Utilization</h2>
+        <div class="grid">
+          <div class="stat-box">
+            <div class="stat-label">CPU Usage</div>
+            <div class="stat-value" id="cpu-usage">—</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">RAM Usage</div>
+            <div class="stat-value" id="memory">—</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Disk Usage</div>
+            <div class="stat-value" id="disk-usage">—</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="battery-section">
+        <h2>🔋 Device Status</h2>
+        <div class="info-grid" id="battery-info"></div>
+      </section>
+
+      <section id="charts-section">
+        <h2>📊 Real-Time Performance Metrics</h2>
+        <div class="grid">
+          <div class="chart-container">
+            <canvas id="cpuChart"></canvas>
+          </div>
+          <div class="chart-container">
+            <canvas id="memoryChart"></canvas>
+          </div>
+        </div>
+        <div style="margin-top: 20px;">
+          <div class="chart-container">
+            <canvas id="networkChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section id="alerts-section">
+        <h2>⚠️ Security Alerts & Warnings</h2>
+        <div id="alerts-container"></div>
+      </section>
+
+      <section id="sensor-section">
+        <h2>📡 Device Sensors</h2>
+        <table id="sensor-table">
+          <thead><tr><th>Sensor</th><th>Value</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </div>
+
+    <!-- PROCESSES PAGE -->
+    <div id="processes" class="page-section">
+      <section id="process-start-section">
+        <h2>▶️ Launch Process / Script</h2>
+        <div style="margin-bottom: 15px;">
+          <input type="text" id="new-process-cmd" placeholder="Example: python3 /data/script.py | node /data/server.js | bash /data/setup.sh" style="width: 100%; padding: 10px; margin-bottom: 10px;">
+          <button onclick="startNewProcess()" style="background: linear-gradient(135deg, #44ff44 0%, #66ff66 100%);">▶️ Start Process</button>
+          <button onclick="clearProcessInput()" style="background: #ff6b6b;">Clear</button>
+        </div>
+        <div id="process-start-output" style="background: #0a0e27; border: 2px solid #00ff99; padding: 10px; border-radius: 5px; max-height: 150px; overflow-y: auto; display:none;"></div>
+      </section>
+
+      <section id="processes-section">
+        <h2>⚙️ Running Processes (Click to Details)</h2>
+        <div style="margin-bottom: 10px; font-size: 12px; color: #00ffcc;">
+          <strong>Total Processes:</strong> <span id="total-procs">0</span> | 
+          <button onclick="fetchProcesses()" style="background: #00ff99;">Refresh</button>
+        </div>
+        <table id="processes-table">
+          <thead><tr><th>PID</th><th>Name</th><th>User</th><th>Status</th><th>Memory %</th><th>CPU %</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </div>
+
+    <!-- NETWORK PAGE -->
+    <div id="network" class="page-section">
+      <section id="network-section">
+        <h2>Network Connections</h2>
+        <table id="network-table">
+          <thead><tr><th>Local Address</th><th>Remote Address</th><th>Status</th><th>PID</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </div>
+
+    <!-- PACKETS PAGE -->
+    <div id="packets" class="page-section">
+      <section id="packets-section">
+        <h2>📡 Packet Capture</h2>
+        <div style="margin-bottom:10px;">
+          <input type="text" id="pkt-count" placeholder="Number of packets (default 20)" style="width: 25%; padding: 8px;">
+          <input type="text" id="pkt-filter" placeholder="tcpdump filter expression (optional)" style="width: 50%; padding: 8px;">
+          <button onclick="fetchPackets()" style="background:#00ff99;">Capture</button>
+          <button onclick="clearPackets()" style="background:#ff6b6b;">Clear</button>
+        </div>
+        <div id="packets-output" style="white-space: pre-wrap; background: #0a0e27; border:2px solid #00ff99; padding:15px; max-height:400px; overflow-y:auto;
+             border-radius:5px; font-size:12px; line-height:1.4;"></div>
+      </section>
+    </div>
+
+    <!-- FILE MANAGER PAGE -->
+    <div id="files" class="page-section">
+      <section id="file-section">
+        <h2>File Manager</h2>
+        <div style="margin-bottom: 10px;">
+          <input type="text" id="dir-path" placeholder="Directory path" value="/" style="width: 70%; padding: 8px;">
+          <button onclick="listDir()">Browse</button>
+        </div>
+        <table id="dir-table">
+          <thead><tr><th>Name</th><th>Type</th><th>Path</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </div>
+
+    <!-- FILE EDITOR PAGE -->
+    <div id="editor" class="page-section">
+      <section id="file-content-section">
+        <h2>File Editor</h2>
+        <input type="text" id="file-path" placeholder="Full file path" style="width: 100%; padding: 8px; margin-bottom: 10px;">
+        <textarea id="file-content" placeholder="File contents will appear here..." style="width: 100%; height: 300px;"></textarea><br>
+        <button onclick="readFile()">Read File</button>
+        <button onclick="writeFile()">Save File</button>
+        <button onclick="delFile()">Delete File</button>
+      </section>
+    </div>
+
+    <!-- COMMANDS PAGE -->
+    <div id="commands" class="page-section">
+      <section id="control-section">
+        <h2>💻 Terminal Command Executor</h2>
+        <textarea id="cmd" placeholder="Execute system commands without opening Termux app. Examples: ls -la | whoami | netstat -tlnp | ps aux | cat /etc/hostname"></textarea>
+        <div style="margin-bottom: 15px;">
+          <button onclick="runCmd()" style="background: linear-gradient(135deg, #00ff99 0%, #00ffcc 100%);">⚡ Execute Command</button>
+          <button onclick="clearCmd()" style="background: #ff6b6b;">Clear Output</button>
+          <span style="margin-left: 20px; color: #00ffcc;">Command output appears below:</span>
+        </div>
+        <div id="output"></div>
+      </section>
+
+      <section id="quick-commands">
+        <h2>🔧 Quick Command Shortcuts</h2>
+        <div class="grid">
+          <button onclick="runCmd2('whoami')" style="width: 100%; background: #00ff99;">👤 Current User</button>
+          <button onclick="runCmd2('pwd')" style="width: 100%; background: #00ff99;">📁 Current Directory</button>
+          <button onclick="runCmd2('date')" style="width: 100%; background: #00ff99;">📅 System Date/Time</button>
+          <button onclick="runCmd2('df -h')" style="width: 100%; background: #00ff99;">💾 Disk Space</button>
+          <button onclick="runCmd2('free -h')" style="width: 100%; background: #00ff99;">🧠 Memory Info</button>
+          <button onclick="runCmd2('uname -a')" style="width: 100%; background: #00ff99;">🔍 System Info</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- PACKAGE MANAGER PAGE -->
+    <div id="packages" class="page-section">
+      <section id="package-section">
+        <h2>📦 Package Manager</h2>
+        <div style="margin-bottom: 15px;">
+          <input type="text" id="pkg-search" placeholder="Search packages..." style="width: 60%; padding: 8px;">
+          <button onclick="searchPackages()" style="background: #00ffcc;">Search</button>
+          <button onclick="loadInstalledPackages()" style="background: #ffaa44;">Refresh Installed</button>
+          <button onclick="updatePackageList()" style="background: #44ff44;">Update List</button>
+        </div>
+
+        <h3 style="color: #00ff99; margin-top: 20px;">🔍 Search Results</h3>
+        <table style="width: 100%; margin-bottom: 20px;">
+          <thead><tr><th>Package Name</th><th>Description</th><th>Action</th></tr></thead>
+          <tbody id="search-results"></tbody>
+        </table>
+
+        <h3 style="color: #00ff99; margin-top: 20px;">✅ Installed Packages</h3>
+        <div style="max-height: 300px; overflow-y: auto; border: 1px solid #00ff99;">
+          <table style="width: 100%;">
+            <thead><tr><th>Package Name</th><th>Version</th><th>Action</th></tr></thead>
+            <tbody id="installed-packages"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="package-output-section" style="display: none;">
+        <h2>Installation Output</h2>
+        <div id="package-output" style="background: #0a0e27; border: 1px solid #00ff99; padding: 10px; max-height: 300px; overflow-y: auto; white-space: pre-wrap;"></div>
+      </section>
+    </div>
+    <div id="activity" class="page-section">
+      <section id="activity-section">
+        <h2>📋 Activity Log</h2>
+        <table id="activity-table">
+          <thead><tr><th>Timestamp</th><th>Action</th><th>Details</th><th>Status</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    // Chart data storage
+    let cpuData = [];
+    let memoryData = [];
+    let networkData = [];
+    let timeLabels = [];
+    let maxDataPoints = 30;
+    
+    let cpuChart, memoryChart, networkChart;
+    
+    function switchPage(btn, pageId) {
+      // Hide all pages
+      document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
+      // Remove active from all buttons
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      // Show selected page
+      document.getElementById(pageId).classList.add('active');
+      btn.classList.add('active');
+      
+      // Reinitialize charts if dashboard page
+      if(pageId === 'dashboard' && !cpuChart) {
+        initCharts();
+      }
+    }
+    
+    function initCharts() {
+      // CPU Chart
+      const cpuCtx = document.getElementById('cpuChart').getContext('2d');
+      cpuChart = new Chart(cpuCtx, {
+        type: 'line',
+        data: {
+          labels: timeLabels,
+          datasets: [{
+            label: 'CPU Usage %',
+            data: cpuData,
+            borderColor: '#00ff99',
+            backgroundColor: 'rgba(0, 255, 153, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#00ffcc',
+            pointBorderColor: '#00ff99',
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#00ff99', font: { size: 12 } }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: { color: '#00ff99' },
+              grid: { color: '#1a2540' },
+              title: { display: true, text: 'CPU %', color: '#00ff99' }
+            },
+            x: {
+              ticks: { color: '#00ff99' },
+              grid: { color: '#1a2540' }
+            }
+          }
+        }
+      });
+      
+      // Memory Chart
+      const memCtx = document.getElementById('memoryChart').getContext('2d');
+      memoryChart = new Chart(memCtx, {
+        type: 'line',
+        data: {
+          labels: timeLabels,
+          datasets: [{
+            label: 'Memory Usage %',
+            data: memoryData,
+            borderColor: '#ff6b6b',
+            backgroundColor: 'rgba(255, 107, 107, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#ff8888',
+            pointBorderColor: '#ff6b6b',
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#ff6b6b', font: { size: 12 } }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: { color: '#ff6b6b' },
+              grid: { color: '#1a2540' },
+              title: { display: true, text: 'Memory %', color: '#ff6b6b' }
+            },
+            x: {
+              ticks: { color: '#ff6b6b' },
+              grid: { color: '#1a2540' }
+            }
+          }
+        }
+      });
+      
+      // Network Connections Chart
+      const netCtx = document.getElementById('networkChart').getContext('2d');
+      networkChart = new Chart(netCtx, {
+        type: 'bar',
+        data: {
+          labels: ['Active', 'Listen', 'Established', 'Close_Wait', 'Time_Wait'],
+          datasets: [{
+            label: 'Connections',
+            data: [0, 0, 0, 0, 0],
+            backgroundColor: [
+              '#00ff99',
+              '#00ffcc',
+              '#ffaa44',
+              '#ff6b6b',
+              '#ff4444'
+            ],
+            borderColor: '#00ff99',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: {
+            legend: {
+              labels: { color: '#00ff99', font: { size: 12 } }
+            }
+          },
+          scales: {
+            x: {
+              ticks: { color: '#00ff99' },
+              grid: { color: '#1a2540' }
+            },
+            y: {
+              ticks: { color: '#00ff99' },
+              grid: { color: '#1a2540' }
+            }
+          }
+        }
+      });
+    }
+    
+    function updateCharts() {
+      const now = new Date();
+      const timeStr = now.getHours().toString().padStart(2, '0') + ':' + 
+                      now.getMinutes().toString().padStart(2, '0') + ':' + 
+                      now.getSeconds().toString().padStart(2, '0');
+      
+      // Get CPU and Memory
+      fetch('/device-info').then(r=>r.json()).then(data=>{
+        const cpuPercent = (data.cpu_percent || 0).toFixed(1);
+        const memPercent = (data.memory.percent || 0).toFixed(1);
+        
+        cpuData.push(parseFloat(cpuPercent));
+        memoryData.push(parseFloat(memPercent));
+        timeLabels.push(timeStr);
+        
+        // Keep last N data points
+        if(cpuData.length > maxDataPoints) {
+          cpuData.shift();
+          memoryData.shift();
+          timeLabels.shift();
+        }
+        
+        // Count stats
+        fetch('/processes').then(r=>r.json()).then(procs=>{
+          document.getElementById('proc-count').textContent = procs.length;
+        });
+        
+        fetch('/network').then(r=>r.json()).then(conns=>{
+          document.getElementById('net-count').textContent = conns.length;
+          
+          // Count by status
+          const statusCount = { ESTABLISHED: 0, LISTEN: 0, CLOSE_WAIT: 0, TIME_WAIT: 0 };
+          conns.forEach(c=>{
+            const status = c.status.toUpperCase();
+            statusCount[status] = (statusCount[status] || 0) + 1;
+          });
+          
+          if(networkChart) {
+            networkChart.data.datasets[0].data = [
+              statusCount.ESTABLISHED || 0,
+              statusCount.LISTEN || 0,
+              statusCount.CLOSE_WAIT || 0,
+              statusCount.TIME_WAIT || 0,
+              conns.length - (statusCount.ESTABLISHED + statusCount.LISTEN + statusCount.CLOSE_WAIT + statusCount.TIME_WAIT)
+            ];
+            networkChart.update();
+          }
+        });
+        
+        if(cpuChart && memoryChart) {
+          cpuChart.data.labels = timeLabels;
+          cpuChart.data.datasets[0].data = cpuData;
+          cpuChart.update();
+          
+          memoryChart.data.labels = timeLabels;
+          memoryChart.data.datasets[0].data = memoryData;
+          memoryChart.update();
+        }
+      });
+    }
+    
+    function fetchDeviceInfo() {
+      fetch('/device-info').then(r=>r.json()).then(data=>{
+        if(data.error) return;
+        document.getElementById('hostname').textContent = data.hostname || '—';
+        document.getElementById('uptime').textContent = data.uptime || '—';
+        document.getElementById('cpu_count').textContent = data.cpu_count || '—';
+        
+        const mem = data.memory;
+        const memPercent = mem.percent ? mem.percent.toFixed(1) : 0;
+        document.getElementById('memory').textContent = memPercent + '%';
+        
+        const cpu_display = data.cpu_percent ? data.cpu_percent.toFixed(1) : 0;
+        document.getElementById('cpu-usage').textContent = cpu_display + '%';
+        
+        const disk = data.disk;
+        const diskPercent = disk.percent ? disk.percent.toFixed(1) : 0;
+        document.getElementById('disk-usage').textContent = diskPercent + '%';
+        
+        const load = data.load_avg;
+        const loadStr = load ? load.map(l => l.toFixed(2)).join(', ') : '—';
+        document.getElementById('sys-load').textContent = loadStr;
+      });
+    }
+    
+    function fetchAlerts() {
+      fetch('/system-alerts').then(r=>r.json()).then(data=>{
+        const container = document.getElementById('alerts-container');
+        container.innerHTML = '';
+        if(data.alerts) {
+          data.alerts.forEach(alert=>{
+            const alertBox = document.createElement('div');
+            let classes = '';
+            if(alert.level === 'critical') {
+              classes = 'alert-box';
+            } else if(alert.level === 'warning') {
+              classes = 'alert-box';
+            } else if(alert.level === 'success') {
+              classes = 'success-box';
+            } else {
+              classes = 'stat-box';
+            }
+            alertBox.className = classes;
+            alertBox.innerHTML = `<strong>[${alert.level.toUpperCase()}]</strong> ${alert.title}: ${alert.message}`;
+            container.appendChild(alertBox);
+          });
+        }
+      });
+    }
+    
+    function fetchBattery() {
+      fetch('/battery').then(r=>r.json()).then(data=>{
+        const container = document.getElementById('battery-info');
+        container.innerHTML = '';
+        for(let k in data) {
+          const box = document.createElement('div');
+          box.className = 'stat-box';
+          box.innerHTML = `<div class="stat-label">${k}:</div><div class="stat-value">${data[k]}</div>`;
+          container.appendChild(box);
+        }
+      });
+    }
+    
+    function fetchSensor() {
+      fetch('/sensor').then(r=>r.json()).then(data=>{
+        const tbody = document.querySelector('#sensor-table tbody');
+        tbody.innerHTML = '';
+        for(let k in data) {
+          const row = document.createElement('tr');
+          row.innerHTML = `<td>${k}</td><td>${data[k]}</td>`;
+          tbody.appendChild(row);
+        }
+      });
+    }
+    
+    function fetchProcesses() {
+      fetch('/processes').then(r=>r.json()).then(data=>{
+        const tbody = document.querySelector('#processes-table tbody');
+        tbody.innerHTML = '';
+        document.getElementById('total-procs').textContent = data.length;
+        data.forEach(p=>{
+          const row = document.createElement('tr');
+          let memPercent = '—';
+          let cpuPercent = '—';
+          row.innerHTML = `
+            <td><strong>${p.pid}</strong></td>
+            <td>${p.name}</td>
+            <td>${p.username||'—'}</td>
+            <td><span style="color: ${p.status === 'running' ? '#44ff44' : '#ffaa44'};">${p.status}</span></td>
+            <td>${memPercent}</td>
+            <td>${cpuPercent}</td>
+            <td>
+              <button onclick="killProc(${p.pid})" style="background:#ff4444; font-size:0.75em; padding:4px 8px; margin-bottom:2px;">Kill</button>
+              <button onclick="suspendProc(${p.pid})" style="background:#ffaa44; font-size:0.75em; padding:4px 8px; margin-bottom:2px;">Pause</button>
+              <button onclick="resumeProc(${p.pid})" style="background:#44ff44; font-size:0.75em; padding:4px 8px;">Resume</button>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      });
+    }
+    
+    function clearProcessInput() {
+      document.getElementById('new-process-cmd').value = '';
+      document.getElementById('process-start-output').style.display = 'none';
+    }
+    
+    function fetchNetwork() {
+      fetch('/network').then(r=>r.json()).then(data=>{
+        const tbody = document.querySelector('#network-table tbody');
+        tbody.innerHTML = '';
+        data.forEach(c=>{
+          const row = document.createElement('tr');
+          row.innerHTML = `<td>${c.laddr||'—'}</td><td>${c.raddr||'—'}</td><td>${c.status}</td><td>${c.pid||'—'}</td>`;
+          tbody.appendChild(row);
+        });
+      });
+    }
+
+    function fetchPackets() {
+      const count = document.getElementById('pkt-count').value || '20';
+      const filter = document.getElementById('pkt-filter').value || '';
+      const params = new URLSearchParams({count, filter});
+      document.getElementById('packets-output').textContent = '[*] Capturing packets...';
+      fetch('/packets?' + params.toString()).then(r=>r.json()).then(data=>{
+        document.getElementById('packets-output').textContent = data.output || data.error || '';
+      });
+    }
+
+    function clearPackets() {
+      document.getElementById('pkt-count').value = '';
+      document.getElementById('pkt-filter').value = '';
+      document.getElementById('packets-output').textContent = '';
+    }
+    
+    function runCmd() {
+      const cmd = document.getElementById('cmd').value;
+      if(!cmd) return;
+      document.getElementById('output').textContent = `[*] Executing: ${cmd}\n`;
+      fetch('/run', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({cmd})
+      }).then(r=>r.json()).then(j=>{ 
+        document.getElementById('output').textContent = `[+] Command executed successfully:\n\n${j.output}`; 
+      });
+    }
+    
+    function runCmd2(cmd) {
+      document.getElementById('cmd').value = cmd;
+      document.getElementById('output').textContent = `[*] Executing: ${cmd}\n`;
+      fetch('/run', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({cmd})
+      }).then(r=>r.json()).then(j=>{ 
+        document.getElementById('output').textContent = `[+] Command executed:\n\n${j.output}`; 
+      });
+    }
+    
+    function clearCmd() {
+      document.getElementById('output').textContent = '';
+    }
+    
+    function killProc(pid) {
+      if(!confirm(`Kill process ${pid}?`)) return;
+      fetch(`/kill/${pid}`, {method:'POST'}).then(r=>r.json()).then(j=>{
+        alert(j.message || j.error);
+        fetchProcesses();
+      });
+    }
+    
+    function suspendProc(pid) {
+      fetch(`/suspend/${pid}`, {method:'POST'}).then(r=>r.json()).then(j=>{
+        alert(j.message || j.error);
+        fetchProcesses();
+      });
+    }
+    
+    function resumeProc(pid) {
+      fetch(`/resume/${pid}`, {method:'POST'}).then(r=>r.json()).then(j=>{
+        alert(j.message || j.error);
+        fetchProcesses();
+      });
+    }
+    
+    function listDir() {
+      const dirpath = document.getElementById('dir-path').value || '/';
+      fetch('/dir-list', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({path: dirpath})
+      }).then(r=>r.json()).then(data=>{
+        if(data.error) {
+          alert('Error: ' + data.error);
+          return;
+        }
+        const tbody = document.querySelector('#dir-table tbody');
+        tbody.innerHTML = '';
+        data.items.forEach(item=>{
+          const row = document.createElement('tr');
+          const type = item.is_dir ? '📁 DIR' : '📄 FILE';
+          row.innerHTML = `
+            <td>${item.name}</td>
+            <td>${type}</td>
+            <td>${item.path}</td>
+            <td>
+              <button onclick="copyPath('${item.path}')" style="font-size:0.8em; padding:3px 8px;">Copy</button>
+              ${item.is_dir ? `<button onclick="browseDir('${item.path}')" style="font-size:0.8em; padding:3px 8px;">Open</button>` : ''}
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      });
+    }
+    
+    function browseDir(path) {
+      document.getElementById('dir-path').value = path;
+      listDir();
+    }
+    
+    function copyPath(path) {
+      document.getElementById('file-path').value = path;
+      alert('Path copied to file editor');
+    }
+    
+    function readFile() {
+      const path = document.getElementById('file-path').value;
+      if(!path) {
+        alert('Enter file path');
+        return;
+      }
+      fetch('/file-read', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({path})
+      }).then(r=>r.json()).then(data=>{
+        if(data.error) {
+          alert('Error: ' + data.error);
+        } else {
+          document.getElementById('file-content').value = data.content;
+        }
+      });
+    }
+    
+    function writeFile() {
+      const path = document.getElementById('file-path').value;
+      const content = document.getElementById('file-content').value;
+      if(!path) {
+        alert('Enter file path');
+        return;
+      }
+      fetch('/file-write', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({path, content})
+      }).then(r=>r.json()).then(data=>{
+        if(data.error) {
+          alert('Error: ' + data.error);
+        } else {
+          alert('File saved successfully');
+        }
+      });
+    }
+    
+    function delFile() {
+      const path = document.getElementById('file-path').value;
+      if(!path) {
+        alert('Enter file path');
+        return;
+      }
+      if(!confirm(`Delete ${path}?`)) return;
+      fetch('/file-delete', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({path})
+      }).then(r=>r.json()).then(data=>{
+        if(data.error) {
+          alert('Error: ' + data.error);
+        } else {
+          alert('File deleted');
+          document.getElementById('file-path').value = '';
+          document.getElementById('file-content').value = '';
+        }
+      });
+    }
+    
+    function fetchActivityLog() {
+      fetch('/activity-log').then(r=>r.json()).then(data=>{
+        const tbody = document.querySelector('#activity-table tbody');
+        tbody.innerHTML = '';
+        // Reverse to show latest first
+        data.activities.reverse().forEach(act=>{
+          const row = document.createElement('tr');
+          const time = new Date(act.timestamp).toLocaleTimeString();
+          let statusColor = act.status === 'success' ? '#44ff44' : '#ff4444';
+          row.innerHTML = `
+            <td>${time}</td>
+            <td>${act.action}</td>
+            <td>${act.details}</td>
+            <td style="color: ${statusColor}; font-weight: bold;">${act.status.toUpperCase()}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      });
+    }
+    
+    function startNewProcess() {
+      const cmd = document.getElementById('new-process-cmd').value;
+      if(!cmd) {
+        alert('Enter a command');
+        return;
+      }
+      const output = document.getElementById('process-start-output');
+      output.style.display = 'block';
+      output.textContent = `[*] Starting process: ${cmd}...`;
+      fetch('/start-process', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({cmd})
+      }).then(r=>r.json()).then(data=>{
+        if(data.status === 'success') {
+          output.textContent = `[+] SUCCESS: ${data.message}\n[*] Process running in background`;
+          setTimeout(() => {
+            output.style.display = 'none';
+          }, 3000);
+        } else {
+          output.textContent = `[-] ERROR: ${data.message}`;
+        }
+        fetchActivityLog();
+        fetchProcesses();
+      });
+    }
+    
+    function searchPackages() {
+      const query = document.getElementById('pkg-search').value;
+      if(!query) {
+        alert('Enter package name to search');
+        return;
+      }
+      fetch('/packages/search', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({query})
+      }).then(r=>r.json()).then(data=>{
+        if(data.error) {
+          alert('Error: ' + data.error);
+          return;
+        }
+        const tbody = document.getElementById('search-results');
+        tbody.innerHTML = '';
+        if(data.packages.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No packages found</td></tr>';
+          return;
+        }
+        data.packages.forEach(pkg=>{
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${pkg.name}</td>
+            <td>${pkg.description}</td>
+            <td>
+              <button onclick="installPackage('${pkg.name}')" style="background: #44ff44; font-size:0.8em; padding:3px 8px;">Install</button>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      });
+    }
+    
+    function loadInstalledPackages() {
+      fetch('/packages/installed').then(r=>r.json()).then(data=>{
+        if(data.error) {
+          alert('Error: ' + data.error);
+          return;
+        }
+        const tbody = document.getElementById('installed-packages');
+        tbody.innerHTML = '';
+        if(data.packages.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No packages found</td></tr>';
+          return;
+        }
+        data.packages.forEach(pkg=>{
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${pkg.name}</td>
+            <td>${pkg.version}</td>
+            <td>
+              <button onclick="removePackage('${pkg.name}')" style="background: #ff4444; font-size:0.8em; padding:3px 8px;">Remove</button>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      });
+    }
+    
+    function installPackage(pkgName) {
+      if(!confirm(`Install ${pkgName}?`)) return;
+      document.getElementById('package-output-section').style.display = 'block';
+      document.getElementById('package-output').textContent = `Installing ${pkgName}...`;
+      fetch('/packages/install', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({package: pkgName})
+      }).then(r=>r.json()).then(data=>{
+        if(data.status === 'success') {
+          document.getElementById('package-output').textContent = data.output;
+          alert(`${pkgName} installed successfully!`);
+          searchPackages();
+          loadInstalledPackages();
+        } else {
+          document.getElementById('package-output').textContent = data.message || 'Installation failed';
+          alert('Error: ' + (data.message || 'Installation failed'));
+        }
+      });
+    }
+    
+    function removePackage(pkgName) {
+      if(!confirm(`Remove ${pkgName}?`)) return;
+      document.getElementById('package-output-section').style.display = 'block';
+      document.getElementById('package-output').textContent = `Removing ${pkgName}...`;
+      fetch('/packages/remove', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({package: pkgName})
+      }).then(r=>r.json()).then(data=>{
+        if(data.status === 'success') {
+          document.getElementById('package-output').textContent = data.output;
+          alert(`${pkgName} removed successfully!`);
+          loadInstalledPackages();
+        } else {
+          document.getElementById('package-output').textContent = data.message || 'Removal failed';
+          alert('Error: ' + (data.message || 'Removal failed'));
+        }
+      });
+    }
+    
+    function updatePackageList() {
+      document.getElementById('package-output-section').style.display = 'block';
+      document.getElementById('package-output').textContent = 'Updating package list...';
+      fetch('/packages/update', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({})
+      }).then(r=>r.json()).then(data=>{
+        if(data.status === 'success') {
+          document.getElementById('package-output').textContent = 'Package list updated successfully!\n' + data.output;
+          alert('Package list updated!');
+        } else {
+          document.getElementById('package-output').textContent = data.message || 'Update failed';
+          alert('Error: ' + (data.message || 'Update failed'));
+        }
+      });
+    }
+    
+    // Auto-refresh every 2 seconds
+    initCharts();
+    setInterval(fetchDeviceInfo, 2000);
+    setInterval(fetchAlerts, 3000);
+    setInterval(fetchBattery, 5000);
+    setInterval(fetchSensor, 3000);
+    setInterval(fetchProcesses, 2000);
+    setInterval(fetchNetwork, 2000);
+    setInterval(fetchActivityLog, 1000);
+    setInterval(updateCharts, 3000);
+    
+    // Initial load
+    fetchDeviceInfo();
+    fetchAlerts();
+    fetchBattery();
+    fetchSensor();
+    fetchProcesses();
+    fetchNetwork();
+    fetchActivityLog();
+    listDir();
+    loadInstalledPackages();
+    updateCharts();
+  </script>
+</body>
+</html>
